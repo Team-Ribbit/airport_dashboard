@@ -13,6 +13,7 @@ import { type Airport } from 'types';
 import { AirportCoordinates } from '../shared/AirportCoordinates';
 import { AirportType, getColorByType } from '../shared/AirportType';
 import { AirportCodeName } from '../shared/AirportCodeName';
+import '../../../App.css';
 
 interface AirportMapProps {
   airports: Airport[];
@@ -136,12 +137,7 @@ export const AirportMap: React.FC<AirportMapProps> = ({
     <div style={{ position: 'relative' }}>
       <div 
         ref={mapRef} 
-        style={{ 
-          width: '100%', 
-          height: '500px',
-          border: '1px solid #ccc',
-          borderRadius: '4px'
-        }} 
+        className='airports-panel'
       />
       
       {/* Hover popup */}
