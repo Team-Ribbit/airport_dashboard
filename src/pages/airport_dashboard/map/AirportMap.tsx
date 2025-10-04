@@ -10,6 +10,7 @@ import { Overlay } from 'ol';
 import 'ol/ol.css';
 
 import { type Airport } from 'types';
+import { AirportCoordinates } from '../shared/AirportCoordinates';
 import { AirportCodeName } from '../shared/AirportCodeName';
 
 interface AirportMapProps {
@@ -207,10 +208,7 @@ export const AirportMap: React.FC<AirportMapProps> = ({
               <div>
                 <strong>Coordinates:</strong>
               </div>
-              <div style={{ fontFamily: 'monospace', fontSize: '11px' }}>
-                Lat: {hoveredAirport.coordinates.latitude.toFixed(4)}°<br/>
-                Lon: {hoveredAirport.coordinates.longitude.toFixed(4)}°
-              </div>
+              <AirportCoordinates airport={hoveredAirport} />
             </div>
           </div>
         )}
