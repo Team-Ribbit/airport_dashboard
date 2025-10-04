@@ -11,6 +11,7 @@ import 'ol/ol.css';
 
 import { type Airport } from 'types';
 import { AirportCoordinates } from '../shared/AirportCoordinates';
+import { AirportType, getColorByType } from '../shared/AirportType';
 import { AirportCodeName } from '../shared/AirportCodeName';
 
 interface AirportMapProps {
@@ -175,16 +176,7 @@ export const AirportMap: React.FC<AirportMapProps> = ({
               
               <div>
                 <strong>Type:</strong>{' '}
-                <span style={{
-                  backgroundColor: getTypeColor(hoveredAirport.type),
-                  color: 'white',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  textTransform: 'capitalize'
-                }}>
-                  {hoveredAirport.type}
-                </span>
+                <AirportType airport={hoveredAirport}/>
               </div>
               <div>
                 <strong>Runways:</strong> {hoveredAirport.runways}
@@ -217,30 +209,9 @@ export const AirportMap: React.FC<AirportMapProps> = ({
   );
 };
 
-// Helper function to get color by airport type
-const getTypeColor = (type: Airport['type']) => {
-  switch (type) {
-    case 'international': return '#4CAF50';
-    case 'domestic': return '#2196F3';
-    case 'regional': return '#FF9800';
-    case 'private': return '#9C27B0';
-    default: return '#757575';
-  }
-};
-
 // Style function for airport markers
 const createAirportStyle = (feature: any) => {
   const airport = feature.get('airport') as Airport;
-  
-  const getColorByType = (type: Airport['type']) => {
-    switch (type) {
-      case 'international': return '#4CAF50';
-      case 'domestic': return '#2196F3';
-      case 'regional': return '#FF9800';
-      case 'private': return '#9C27B0';
-      default: return '#757575';
-    }
-  };
 
   return new Style({
     image: new Circle({
