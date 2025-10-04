@@ -1,4 +1,5 @@
 import { AirportMap } from './map/AirportMap';
+import { AirportList } from './list/AirportList';
 import { mockAirports } from 'data/MockAirports';
 
 export function AirportDashboard() {
@@ -10,12 +11,9 @@ export function AirportDashboard() {
           <AirportMap airports={mockAirports} />
         </div>
         <div style={{ flex: 1 }}>
-          {/* TODO: Implement AirportList component */}
-          <div style={{ border: '1px solid #ccc', padding: '20px', height: '500px' }}>
-            <p>Airport table component goes here</p>
-            <p>Should show airports visible on map</p>
-            <p>Should sync selection with map</p>
-          </div>
+          <AirportList airports={mockAirports} />
+          <p>Should show airports visible on map</p>
+          <p>Should sync selection with map</p>
         </div>
       </div>
     </div>
