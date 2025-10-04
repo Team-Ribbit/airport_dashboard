@@ -10,6 +10,7 @@ import { Overlay } from 'ol';
 import 'ol/ol.css';
 
 import { type Airport } from 'types';
+import { AirportCodeName } from '../shared/AirportCodeName';
 
 interface AirportMapProps {
   airports: Airport[];
@@ -161,16 +162,7 @@ export const AirportMap: React.FC<AirportMapProps> = ({
       >
         {hoveredAirport && (
           <div>
-            <div style={{ 
-              fontWeight: 'bold', 
-              fontSize: '16px', 
-              marginBottom: '8px',
-              color: '#333',
-              borderBottom: '1px solid #eee',
-              paddingBottom: '4px'
-            }}>
-              {hoveredAirport.code} - {hoveredAirport.name}
-            </div>
+            <AirportCodeName airport={hoveredAirport}/>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
               <div>
