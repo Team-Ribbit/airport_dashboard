@@ -7,6 +7,8 @@ import { Point } from 'ol/geom';
 import { fromLonLat } from 'ol/proj';
 import { Style, Circle, Fill, Stroke, Text } from 'ol/style';
 import { Overlay } from 'ol';
+import type { Extent } from 'ol/extent';
+import { transform } from 'ol/proj';
 import 'ol/ol.css';
 
 import { type Airport } from 'types';
@@ -20,11 +22,12 @@ interface AirportMapProps {
   // TODO: Add props for selection and bounds change callbacks
   // selectedAirport?: Airport | null;
   // onAirportSelect?: (airport: Airport | null) => void;
-  // onBoundsChange?: (bounds: MapBounds) => void;
+  onExtentAirportsChanged: ((airports: Airport[])=>void);
 }
 
 export const AirportMap: React.FC<AirportMapProps> = ({
   airports,
+  onExtentAirportsChanged
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -33,7 +36,47 @@ export const AirportMap: React.FC<AirportMapProps> = ({
   const overlayRef = useRef<Overlay | null>(null);
   
   const [hoveredAirport, setHoveredAirport] = useState<Airport | null>(null);
+  let extentAirportsRef = useRef<Airport[]>([]);
 
+  function isAirportInExtent(airport: Airport, extent: Extent): boolean {
+    // TODO: move transform to loading of the Airports
+    // TODO: normalize extent 
+    const [x, y] = transform([airport.coordinates.longitude, airport.coordinates.latitude], 'EPSG:4326', 'EPSG:3857');
+    return (
+      x >= extent[0] &&
+      x <= extent[2] &&
+      y >= extent[1] &&
+      y <= extent[3]
+    );
+  }
+
+  function allAirportsInExtent(airports: Airport[], extent: Extent): Airport[] {
+    return airports.filter((a) => isAirportInExtent(a, extent));
+  }
+
+  // ARCHITECTURE DECISION: could have used lodash.isEqual, but wrote this myself to reduce external dependency
+  // TODO: determine complexity of this function and optimize (could use a Set instead of Array.indexOf).
+  function arraysAreEqual<T>(a: T[], b: T[]): boolean {
+    if (a.length != b.length) return false;
+    a.forEach(element => { if (b.indexOf(element) === -1) { return false; } });
+    return true;
+  }
+
+  // update extent Airports
+  const updateExtentAirports = () => {
+    if(mapInstanceRef.current==null) { return; }
+    const map = mapInstanceRef.current;
+    const extent = map.getView().calculateExtent(map.getSize());
+    const extentAirports = allAirportsInExtent(airports, extent)
+
+    // only update if Airports has changed
+    if (arraysAreEqual(extentAirports, extentAirportsRef.current)) {
+      return;
+    }
+    extentAirportsRef.current = extentAirports;
+    onExtentAirportsChanged(extentAirports)
+  };
+  
   // Initialize OpenLayers map
   useEffect(() => {
     if (!mapRef.current || !popupRef.current) return;
@@ -102,7 +145,10 @@ export const AirportMap: React.FC<AirportMapProps> = ({
     mapInstanceRef.current = map;
 
     // TODO: Add selection interaction
-    // TODO: Add bounds change handling
+
+    // update whenever the map is moved or zoomed
+    map.on('moveend', updateExtentAirports);
+    map.on('pointerdrag', updateExtentAirports);
 
     return () => {
       map.setTarget(undefined);
@@ -128,6 +174,8 @@ export const AirportMap: React.FC<AirportMapProps> = ({
       feature.setId(airport.id);
       vectorSource.addFeature(feature);
     });
+
+    updateExtentAirports();
   }, [airports]);
 
   // TODO: Handle external selection changes
