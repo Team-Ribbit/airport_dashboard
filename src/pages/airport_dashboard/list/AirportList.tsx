@@ -11,6 +11,21 @@ interface AirportListProps {
 export const AirportList: React.FC<AirportListProps> = ({
     airports,
 }) => {
+    if (airports.length === 0) {
+        return (
+            <div className='airports-panel'
+                style={{
+                    overflow: 'auto',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontFamily: 'Arial, sans-serif'
+                }}>
+                <div>
+                    <strong>No airports in range. Try a different location on the map!</strong>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className='airports-panel'
@@ -26,7 +41,7 @@ export const AirportList: React.FC<AirportListProps> = ({
                 }}>
                     <tr>
                         <th>Name</th>
-                        <th>City</th>
+                    <th>City</th>
                         <th>Country</th>
                         <th>Type</th>
                         <th>Runways</th>
