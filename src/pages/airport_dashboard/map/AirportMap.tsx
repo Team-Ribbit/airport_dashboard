@@ -1,14 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Map, View } from 'ol';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer';
 import { OSM, Vector as VectorSource } from 'ol/source';
-import { Feature } from 'ol';
+import { Feature, Overlay, Map, View } from 'ol';
 import { Point } from 'ol/geom';
-import { fromLonLat } from 'ol/proj';
+import { getPointResolution, useGeographic } from 'ol/proj';
 import { Style, Circle, Fill, Stroke, Text } from 'ol/style';
-import { Overlay } from 'ol';
 import type { Extent } from 'ol/extent';
-import { transform } from 'ol/proj';
+import { containsXY} from 'ol/extent';
 import 'ol/ol.css';
 
 import { type Airport } from 'types';
@@ -38,36 +36,60 @@ export const AirportMap: React.FC<AirportMapProps> = ({
   const [hoveredAirport, setHoveredAirport] = useState<Airport | null>(null);
   let extentAirportsRef = useRef<Airport[]>([]);
 
-  function isAirportInExtent(airport: Airport, extent: Extent): boolean {
-    // TODO: move transform to loading of the Airports
-    // TODO: normalize extent 
-    const [x, y] = transform([airport.coordinates.longitude, airport.coordinates.latitude], 'EPSG:4326', 'EPSG:3857');
-    return (
-      x >= extent[0] &&
-      x <= extent[2] &&
-      y >= extent[1] &&
-      y <= extent[3]
-    );
-  }
-
-  function allAirportsInExtent(airports: Airport[], extent: Extent): Airport[] {
-    return airports.filter((a) => isAirportInExtent(a, extent));
-  }
-
   // ARCHITECTURE DECISION: could have used lodash.isEqual, but wrote this myself to reduce external dependency
-  // TODO: determine complexity of this function and optimize (could use a Set instead of Array.indexOf).
-  function arraysAreEqual<T>(a: T[], b: T[]): boolean {
+  // TODO: determine complexity of this function and optimize.
+  function arraysAreEqual(a: Airport[], b: Airport[]): boolean {
     if (a.length != b.length) return false;
-    a.forEach(element => { if (b.indexOf(element) === -1) { return false; } });
+    let c = new Set<Airport>(b);
+    a.forEach(element => { if(!c.has(element)) { return false; } });
     return true;
   }
 
+  function normalizeAndSplitExtent(extent: Extent): Extent[] {
+    const [minLon, minLat, maxLon, maxLat] = extent;
+
+    // Normalize longitudes to [-180, 180)
+    const normalizeLon = (lon: number): number => {
+      return ((lon + 180) % 360 + 360) % 360 - 180;
+    };
+
+    const normMinLon = normalizeLon(minLon);
+    const normMaxLon = normalizeLon(maxLon);
+
+    // If normalized extent does NOT cross the antimeridian
+    if (normMinLon <= normMaxLon) {
+      return [[normMinLon, minLat, normMaxLon, maxLat]];
+    }
+
+    // If extent crosses the antimeridian, split into two extents
+    return [
+      [normMinLon, minLat, 180, maxLat],     // Part 1: from normMinLon to 180°
+      [-180, minLat, normMaxLon, maxLat]     // Part 2: from -180° to normMaxLon
+    ];
+  }
+
+
   // update extent Airports
   const updateExtentAirports = () => {
-    if(mapInstanceRef.current==null) { return; }
-    const map = mapInstanceRef.current;
-    const extent = map.getView().calculateExtent(map.getSize());
-    const extentAirports = allAirportsInExtent(airports, extent)
+    var extentAirports: Airport[] = [];
+      if (mapInstanceRef.current == null) { return; }
+      const map = mapInstanceRef.current;
+      const extent = map.getView().calculateExtent(map.getSize());
+
+      const queryExtents = normalizeAndSplitExtent(extent);
+
+      // go through the returned Extents and add any Airports that are contained
+      queryExtents.forEach(ext => {
+        // fudging to handle wrap-around Extent. Need to make the math a little fuzzy here. Magic number!
+        // TODO: get rid of magic number (TECH DEBT)
+        if(Math.abs(ext[0]-ext[2])<0.000000000001) {
+          ext = [-180,ext[1],180,ext[3]];
+        }
+        
+        extentAirports = extentAirports.concat(
+          airports.filter((airport) => containsXY(ext,airport.coordinates.longitude,airport.coordinates.latitude ))
+        );
+      });
 
     // only update if Airports has changed
     if (arraysAreEqual(extentAirports, extentAirportsRef.current)) {
@@ -110,11 +132,13 @@ export const AirportMap: React.FC<AirportMapProps> = ({
         vectorLayer,
       ],
       view: new View({
-        center: fromLonLat([-98.35, 39.5]), // Center of US
+        center: [-98.35, 39.5], // Center of US
         zoom: 4,
       }),
       overlays: [overlay],
     });
+
+    useGeographic();
 
     // Handle mouse hover events
     map.on('pointermove', (evt) => {
@@ -164,10 +188,10 @@ export const AirportMap: React.FC<AirportMapProps> = ({
 
     airports.forEach((airport) => {
       const feature = new Feature({
-        geometry: new Point(fromLonLat([
+        geometry: new Point([
           airport.coordinates.longitude,
           airport.coordinates.latitude
-        ])),
+        ]),
         airport: airport,
       });
 
